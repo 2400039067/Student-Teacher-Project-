@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Student Performance Analytics System</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body { font-family: Arial; background: #f4f6f9; }
+.container { width: 80%; margin: 40px auto; }
+.card { background: white; padding: 25px; border-radius: 6px; box-shadow: 0 0 10px #aaa; margin-bottom: 20px; }
+h2 { text-align: center; }
+input, select, button { width: 100%; padding: 10px; margin-top: 8px; }
+button { background: #3498db; color: white; border: none; cursor: pointer; }
+button:hover { background: #2980b9; }
+.logout { background: #c0392b; }
+.hidden { display: none; }
+.good { color: green; font-weight: bold; }
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<!-- LOGIN -->
+<div class="card" id="loginCard">
+    <h2>Login</h2>
+    <select id="role">
+        <option value="">Select Role</option>
+        <option value="teacher">Teacher</option>
+        <option value="student">Student</option>
+    </select>
+    <input type="text" id="username" placeholder="Enter Name">
+    <input type="password" id="password" placeholder="Enter Password">
+    <button onclick="login()">Login</button>
+    <p id="error" style="color:red;text-align:center;"></p>
+</div>
+
+<!-- TEACHER DASHBOARD -->
+<div class="card hidden" id="teacherDash">
+    <h2>Teacher Dashboard</h2>
+    <p>Welcome, <b><span id="teacherName"></span></b></p>
+
+    <h3>Enter/Update Student Marks</h3>
+    <select id="studentSelect">
+        <option value="">Select Student</option>
+        <option value="vidhya">Vidhya</option>
+        <option value="siri">Siri</option>
+        <option value="kavya">Kavya</option>
+        <option value="divya">Divya</option>
+    </select>
+    <input type="number" id="frontend" placeholder="Frontend (%)">
+    <input type="number" id="java" placeholder="Java (%)">
+    <input type="number" id="dbms" placeholder="DBMS (%)">
+    <input type="number" id="cn" placeholder="Computer Networks (%)">
+    <button onclick="saveMarks()">Save Marks</button>
+
+    <h3>All Students Current Marks</h3>
+    <ul id="allMarks"></ul>
+
+    <button class="logout" onclick="logout()">Logout</button>
+</div>
+
+<!-- STUDENT DASHBOARD -->
+<div class="card hidden" id="studentDash">
+    <h2>Student Performance Report</h2>
+    <p>Welcome, <b><span id="studentName"></span></b></p>
+
+    <canvas id="chart"></canvas>
+
+    <p class="good" id="summary"></p>
+
+    <button class="logout" onclick="logout()">Logout</button>
+</div>
+
+</div>
+
+<script>
+// USERS
+const teachers = ["sudhakar", "raju", "sirisha", "seetha"];
+const students = ["vidhya", "siri", "kavya", "divya"];
+
+// INITIAL MARKS DATABASE
+let marksDB = JSON.parse(localStorage.getItem("marksDB")) || {
+    vidhya: { frontend: 81, java: 82, dbms: 85, cn: 90 },
+    siri:   { frontend: 86, java: 87, dbms: 88, cn: 90 },
+    kavya:  { frontend: 90, java: 93, dbms: 88, cn: 86 },
+    divya:  { frontend: 95, java: 88, dbms: 95, cn: 85 }
+};
+
+// SAVE to localStorage
+localStorage.setItem("marksDB", JSON.stringify(marksDB));
+
+// LOGIN FUNCTION
+function login() {
+    const role = document.getElementById("role").value;
+    const user = document.getElementById("username").value.toLowerCase();
+    const pass = document.getElementById("password").value;
+    const error = document.getElementById("error");
+
+    error.textContent = "";
+
+    if (!role || !user || !pass) { error.textContent = "All fields are required"; return; }
+
+    if (role === "teacher" && teachers.includes(user) && pass === "123456") { showTeacher(user); }
+    else if (role === "student" && students.includes(user) && pass === "12345") { showStudent(user); }
+    else { error.textContent = "Invalid login credentials"; }
+}
+
+// TEACHER DASHBOARD
+function showTeacher(name) {
+    document.getElementById("loginCard").classList.add("hidden");
+    document.getElementById("teacherDash").classList.remove("hidden");
+    document.getElementById("teacherName").textContent = name.toUpperCase();
+    displayAllMarks();
+}
+
+function saveMarks() {
+    const student = document.getElementById("studentSelect").value;
+    const frontend = document.getElementById("frontend").value;
+    const java = document.getElementById("java").value;
+    const dbms = document.getElementById("dbms").value;
+    const cn = document.getElementById("cn").value;
+
+    if (!student || !frontend || !java || !dbms || !cn) { alert("Fill all fields"); return; }
+
+    marksDB[student] = { 
+        frontend: parseInt(frontend), 
+        java: parseInt(java), 
+        dbms: parseInt(dbms), 
+        cn: parseInt(cn) 
+    };
+    localStorage.setItem("marksDB", JSON.stringify(marksDB));
+    alert("Marks saved/updated successfully!");
+    displayAllMarks();
+}
+
+function displayAllMarks() {
+    const list = document.getElementById("allMarks");
+    list.innerHTML = "";
+    for (let student in marksDB) {
+        const data = marksDB[student];
+        const li = document.createElement("li");
+        li.textContent = student.charAt(0).toUpperCase() + student.slice(1) + 
+            ": Frontend " + data.frontend + "%, Java " + data.java + "%, DBMS " + data.dbms + "%, CN " + data.cn + "%";
+        list.appendChild(li);
+    }
+}
+
+// STUDENT DASHBOARD
+function showStudent(name) {
+    document.getElementById("loginCard").classList.add("hidden");
+    document.getElementById("studentDash").classList.remove("hidden");
+    document.getElementById("studentName").textContent = name.toUpperCase();
+
+    const data = marksDB[name];
+
+    const ctx = document.getElementById("chart").getContext("2d");
+    new Chart(ctx, {
+        type: "bar",
+        data: {
+            labels: ["Frontend", "Java", "DBMS", "Computer Networks"],
+            datasets: [{
+                label: "Percentage (%)",
+                data: [data.frontend, data.java, data.dbms, data.cn],
+                backgroundColor: ["#1abc9c", "#3498db", "#f1c40f", "#9b59b6"]
+            }]
+        },
+        options: { scales: { y: { beginAtZero: true, max: 100 } } }
+    });
+
+    // Use string concatenation instead of multi-line template literals
+    document.getElementById("summary").innerHTML = 
+        "Frontend: " + data.frontend + "%<br>" +
+        "Java: " + data.java + "%<br>" +
+        "DBMS: " + data.dbms + "%<br>" +
+        "Computer Networks: " + data.cn + "%<br><br>" +
+        "Recommendation: Excellent performance! Keep it up.";
+}
+
+// LOGOUT
+function logout() { location.reload(); }
+
+</script>
+</body>
+</html>
